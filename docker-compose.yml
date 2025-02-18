@@ -1,0 +1,51 @@
+networks:
+    database:
+        internal: true  # MariaDB only internal access
+    external: # need to install addition modules.
+
+volumes:
+    logs:
+        driver: local
+
+services:
+    core:
+        build:
+            context: .
+            dockerfile: core.Dockerfile
+
+        container_name: core
+        depends_on:
+            - db
+        working_dir: /var/www/core
+        command: php -S 0.0.0.0:8080 -t public
+        environment:
+            docker: "true"
+            XDEBUG_MODE: debug
+            XDEBUG_CONFIG: "client_host=172.17.0.1 client_port=9003"
+#            PHP_IDE_CONFIG: "serverName=OMCGroup"
+
+#            XDEBUG_DISCOVER_CLIENT_HOST: 'false'
+#            XDEBUG_CLIENT_HOST: 'host.docker.internal' #'172.16.238.1'
+            PHP_IDE_CONFIG: "serverName=OMCGroup"
+        ports:
+            - "80:8080"
+        volumes:
+            - .:/var/www
+            - logs:/var/www/logs
+        networks:
+            - database
+            - external
+    db:
+        image: mariadb
+        container_name: db
+        restart: unless-stopped
+        environment:
+            MARIADB_ROOT_PASSWORD: rootpass
+            MARIADB_DATABASE: app
+            MARIADB_USER: user
+            MARIADB_PASSWORD: pass
+        volumes:
+            - ./db_data:/var/lib/mysql
+            - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+        networks:
+            - database
