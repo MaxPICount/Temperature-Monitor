@@ -23,39 +23,38 @@
 </head>
 <body class="container mt-4">
 
-<h2>Hourly Temperature Report</h2>
-    <div class="btn-group mb-3">
-        <button class="btn btn-primary" onclick="showReport('hourly')">Hourly Report</button>
-        <button class="btn btn-secondary" onclick="showReport('malfunctions')">Malfunctions</button>
-    </div>
+<div class="btn-group mb-3">
+    <button class="btn btn-primary" onclick="showReport('hourly')">Hourly Report</button>
+    <button class="btn btn-secondary" onclick="showReport('malfunctions')">Malfunctions</button>
+</div>
 
-    <div id="report-hourly" class="report">
-        <h3>Hourly Temperature Report</h3>
-<table class="table table-striped">
-    <thead>
-    <tr>
-        <th>Face</th>
-        <th>Avg Temperature</th>
-    </tr>
-    </thead>
-    <tbody id="hourly-report"></tbody>
-</table>
-    </div>
+<div id="report-hourly" class="report">
+    <h3>Hourly Temperature Report</h3>
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th>Face</th>
+            <th>Avg Temperature</th>
+        </tr>
+        </thead>
+        <tbody id="hourly-report"></tbody>
+    </table>
+</div>
 
-    <div id="report-malfunctions" class="report" style="display: none;">
-        <h3>Malfunctioning Sensors</h3>
-<table class="table table-striped">
-    <thead>
-    <tr>
-        <th>Sensor ID</th>
-        <th>Face</th>
-        <th>Avg Temp</th>
-        <th>Deviation (%)</th>
-    </tr>
-    </thead>
-    <tbody id="malfunctions"></tbody>
-</table>
-    </div>
+<div id="report-malfunctions" class="report" style="display: none;">
+    <h3>Malfunctioning Sensors</h3>
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th>Sensor ID</th>
+            <th>Face</th>
+            <th>Avg Temp</th>
+            <th>Deviation (%)</th>
+        </tr>
+        </thead>
+        <tbody id="malfunctions"></tbody>
+    </table>
+</div>
 
 <script>
     async function fetchData(url, elementId) {
@@ -67,10 +66,10 @@
         ).join('');
     }
 
-        function showReport(report) {
-            document.querySelectorAll('.report').forEach(el => el.style.display = 'none');
-            document.getElementById('report-' + report).style.display = 'block';
-        }
+    function showReport(report) {
+        document.querySelectorAll('.report').forEach(el => el.style.display = 'none');
+        document.getElementById('report-' + report).style.display = 'block';
+    }
 
     fetchData('/report/hourly', 'hourly-report');
     fetchData('/report/malfunctions', 'malfunctions');

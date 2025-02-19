@@ -1,48 +1,49 @@
 networks:
-    database:
-        internal: true  # MariaDB only internal access
-    external: # need to install addition modules.
-
-volumes:
-    logs:
-        driver: local
+  database:
+    internal: true  # MariaDB only internal access
+  backend:
 
 services:
-    core:
-        build:
-            context: .
-            dockerfile: core.Dockerfile
+  php:
+    build:
+      context: .
+      dockerfile: php.Dockerfile
+    container_name: php
+    command: [ "sh", "-c", "composer install --no-dev --optimize-autoloader && php-fpm" ]
+    environment:
+      XDEBUG_MODE: debug
+      XDEBUG_CONFIG: "client_host=172.24.0.1 client_port=9003"
+      XDEBUG_SESSION_START: ''
+      PHP_IDE_CONFIG: "serverName=OMCGroup"
+    volumes:
+      - ./app:/var/www/html
+    networks:
+      - database
+      - backend
 
-        container_name: core
-        depends_on:
-            - db
-        working_dir: /var/www/core
-        command: php -S 0.0.0.0:8080 -t public index.html
-        environment:
-            docker: "true"
-            XDEBUG_MODE: debug
-            XDEBUG_CONFIG: "client_host=172.17.0.1 client_port=9003"
-            XDEBUG_SESSION_START: ''
-            PHP_IDE_CONFIG: "serverName=OMCGroup"
-        ports:
-            - "80:8080"
-        volumes:
-            - .:/var/www
-            - logs:/var/www/logs
-        networks:
-            - database
-            - external
-    db:
-        image: mariadb
-        container_name: db
-        restart: unless-stopped
-        environment:
-            MARIADB_ROOT_PASSWORD: rootpass
-            MARIADB_DATABASE: app
-            MARIADB_USER: user
-            MARIADB_PASSWORD: pass
-        volumes:
-            - ./db_data:/var/lib/mysql
-            - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
-        networks:
-            - database
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./app:/var/www/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php
+    networks:
+      - backend
+  db:
+    image: mariadb
+    container_name: db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: app
+      MARIADB_USER: user
+      MARIADB_PASSWORD: pass
+    volumes:
+      - ./db_data:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - database
