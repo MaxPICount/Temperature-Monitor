@@ -10,10 +10,10 @@ RUN apk update && apk add git zip
 RUN docker-php-ext-install pdo_mysql
 
 # for xdebug only
-RUN apk add --update linux-headers
-RUN apk add --no-cache $PHPIZE_DEPS \
-    && pecl install xdebug \
-    && docker-php-ext-enable xdebug \
-    && apk del $PHPIZE_DEPS
+#RUN apk add --update linux-headers
+#RUN apk add --no-cache $PHPIZE_DEPS \
+#    && pecl install xdebug \
+#    && docker-php-ext-enable xdebug \
+#    && apk del $PHPIZE_DEPS
 
 

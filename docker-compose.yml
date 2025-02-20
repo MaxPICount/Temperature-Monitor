@@ -10,11 +10,11 @@ services:
       dockerfile: php.Dockerfile
     container_name: php
     command: [ "sh", "-c", "composer install --no-dev --optimize-autoloader && php-fpm" ]
-    environment:
-      XDEBUG_MODE: debug
-      XDEBUG_CONFIG: "client_host=172.19.0.1 client_port=9003"
-      XDEBUG_SESSION_START: ''
-      PHP_IDE_CONFIG: "serverName=OMCGroup"
+#    environment:
+#      XDEBUG_MODE: debug
+#      XDEBUG_CONFIG: "client_host=172.19.0.1 client_port=9003"
+#      XDEBUG_SESSION_START: ''
+#      PHP_IDE_CONFIG: "serverName=OMCGroup"
     volumes:
       - ./app:/var/www/html
     networks:
