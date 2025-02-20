@@ -35,6 +35,7 @@ $app->get('/', function (Request $request, Response $response) {
 });
 
 $app->post('/sensor-data', function (Request $request, Response $response) {
+    /** @var PDO $db */
     $db = $this->get('db');
     $data = json_decode($request->getBody(), true);
 
@@ -93,7 +94,11 @@ SQL
     return $response->withHeader('Content-Type', 'application/json');
 });
 
-
+/**
+ * Detecting malfunctions by comparing the average result of a sensor's data with the average results of other sensors,
+ * or if the sensor did not send data during the tested period.
+ * The tested period is last 1 hour
+ */
 $app->get('/report/malfunctions', function (Request $request, Response $response) {
     $interval = 1;
     /** @var PDO $db */
