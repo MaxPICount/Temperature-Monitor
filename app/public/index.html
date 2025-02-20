@@ -4,76 +4,152 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sensor Reports</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
+            crossorigin="anonymous"></script>
 
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/rowgroup/1.3.1/js/dataTables.rowGroup.min.js"></script>
 
     <script>
-        function initTables() {
-            $('#hourly-report').DataTable();
-            $('#malfunctions').DataTable();
-        }
+        $(async () => {
+            async function fetchReportHourly() {
+                const
+                    response = await fetch('/report/hourly'),
+                    rawData = await response.json();
 
-        fetchData('/report/hourly', 'hourly-report').then(initTables);
-        fetchData('/report/malfunctions', 'malfunctions').then(initTables);
+                let tableData = {};
+
+                rawData.forEach(row => {
+                    let key = `${row.day}-${row.hour}`;
+                    if (!tableData[key]) {
+                        tableData[key] = {day: row.day, hour: row.hour, north: null, east: null, south: null, west: null};
+                    }
+                    tableData[key][row.face] = row.avg_temp;
+                });
+
+                return Object.values(tableData);
+            }
+
+            const render_round_cb = data => data === null ? '<b>Missing Data</b>' : Math.round(data * 100) / 100
+            $('#hourly-table')
+                .DataTable({
+                    data: await fetchReportHourly(),
+                    columnDefs: [
+                        {
+                            targets: [2, 3, 4, 5],
+                            type: 'num',
+                            render: render_round_cb
+                        }
+                    ],
+                    columns: [
+                        {
+                            title: 'Date',
+                            data: 'day',
+                            type: 'date',
+                        },
+                        {
+                            title: 'Hour',
+                            data: 'hour',
+                            type: 'num',
+                            render: data => `${data}:00`},
+                        {
+                            title: 'North (℃)',
+                            data: 'north'
+                        },
+                        {
+                            title: 'East (℃)',
+                            data: 'east'
+                        },
+                        {
+                            title: 'South (℃)',
+                            data: 'south'
+                        },
+                        {
+                            title: "West (℃)",
+                            data: 'west'
+                        }
+                    ],
+                    order: [[0, 'desc'], [1, 'desc']],
+                    rowGroup: {
+                        dataSrc: 'day'
+                    },
+                    processing: true,
+                    autoWidth: false,
+                    searching: false,
+                });
+
+            $('#malfunctions-table')
+                .DataTable({
+                    data: Object.values(
+                        await (
+                            await fetch('/report/malfunctions')
+                        ).json()
+                    ),
+                    columnDefs: [
+                        {
+                            targets: [2, 3, 4],
+                            type: 'num',
+                            render: render_round_cb
+                        }
+                    ],
+                    columns: [
+                        {
+                            title: 'Sensor ID',
+                            data: 'sensor_id',
+                            type: 'num',
+                        },
+                        {
+                            title: 'Face',
+                            data: 'face'
+                        },
+                        {
+                            title: 'Avg Sensor (℃)',
+                            data: 'sensor_avg'
+                        },
+                        {
+                            title: 'Avg Temp (℃)',
+                            data: 'avg_temp'
+                        },
+                        {
+                            title: 'Deviation (%)',
+                            data: row => row['sensor_avg'] === null ? null : Math.abs(row['sensor_avg'] - row['avg_temp'])/row['avg_temp'] * 100,
+                        }
+                    ],
+                    processing: true,
+                    autoWidth: false,
+                    searching: false,
+                });
+        });
+
     </script>
 </head>
-<body class="container mt-4">
+    <body class="container mt-4">
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#report-hourly" type="button"
+                        role="tab" aria-controls="home-tab-pane" aria-selected="true">Hourly Temperature Report(Last 7 Days)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="profile-tab" data-bs-toggle="tab" data-bs-target="#report-malfunctions"
+                        type="button" role="tab" aria-controls="profile-tab-pane" aria-selected="false">Malfunctioning Sensors
+                </button>
+            </li>
+        </ul>
+        <div class="tab-content">
+            <div id="report-hourly" class="tab-pane fade show active">
+                <table id="hourly-table" class="table table-striped"></table>
+            </div>
 
-<div class="btn-group mb-3">
-    <button class="btn btn-primary" onclick="showReport('hourly')">Hourly Report</button>
-    <button class="btn btn-secondary" onclick="showReport('malfunctions')">Malfunctions</button>
-</div>
-
-<div id="report-hourly" class="report">
-    <h3>Hourly Temperature Report</h3>
-    <table class="table table-striped">
-        <thead>
-        <tr>
-            <th>Face</th>
-            <th>Avg Temperature</th>
-        </tr>
-        </thead>
-        <tbody id="hourly-report"></tbody>
-    </table>
-</div>
-
-<div id="report-malfunctions" class="report" style="display: none;">
-    <h3>Malfunctioning Sensors</h3>
-    <table class="table table-striped">
-        <thead>
-        <tr>
-            <th>Sensor ID</th>
-            <th>Face</th>
-            <th>Avg Temp</th>
-            <th>Deviation (%)</th>
-        </tr>
-        </thead>
-        <tbody id="malfunctions"></tbody>
-    </table>
-</div>
-
-<script>
-    async function fetchData(url, elementId) {
-        const response = await fetch(url);
-        const data = await response.json();
-        const tableBody = document.getElementById(elementId);
-        tableBody.innerHTML = data.map(row =>
-            `<tr>${Object.values(row).map(value => `<td>${value}</td>`).join('')}</tr>`
-        ).join('');
-    }
-
-    function showReport(report) {
-        document.querySelectorAll('.report').forEach(el => el.style.display = 'none');
-        document.getElementById('report-' + report).style.display = 'block';
-    }
-
-    fetchData('/report/hourly', 'hourly-report');
-    fetchData('/report/malfunctions', 'malfunctions');
-</script>
-
-</body>
+            <div id="report-malfunctions" class="tab-pane fade">
+                <table id="malfunctions-table" class="table table-striped"></table>
+            </div>
+        </div>
+    </body>
 </html>

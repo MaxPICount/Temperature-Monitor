@@ -32,7 +32,6 @@ $app->get('/', function (Request $request, Response $response) {
             new StreamFactory()
                 ->createStreamFromFile(__DIR__ . '/index.html')
         );
-
 });
 
 $app->post('/sensor-data', function (Request $request, Response $response) {
@@ -40,7 +39,7 @@ $app->post('/sensor-data', function (Request $request, Response $response) {
     $data = json_decode($request->getBody(), true);
 
     if (!isset($data['id'], $data['face'], $data['timestamp'], $data['temperature'])) {
-        $response->getBody()->write(json_encode(['error' => 'Invalid request data']));
+        $response->getBody()->write(json_encode(['error' => 'Invalid request data' ,'requested_data' => $data]));
         return $response->withStatus(400);
     }
 
@@ -72,13 +71,20 @@ SQL
 });
 
 $app->get('/report/hourly', function (Request $request, Response $response) {
+    /** @var PDO $db */
     $db = $this->get('db');
     $stmt = $db->query(<<<SQL
-SELECT s.face, AVG(t.temperature) AS avg_temp
-FROM temperatures t
-JOIN sensors s ON t.sensor_id = s.sensor_id
-WHERE t.timestamp >= NOW() - INTERVAL 1 HOUR
-GROUP BY s.face
+SELECT 
+    s.face AS face, 
+    DATE(t.timestamp) AS day, 
+    HOUR(t.timestamp) AS hour, 
+    AVG(t.temperature) AS avg_temp
+FROM temperatures AS t
+JOIN sensors AS s
+USING(sensor_id)
+WHERE t.timestamp >= NOW() - INTERVAL 7 DAY
+GROUP BY s.face, day, hour
+ORDER BY day DESC, hour DESC, face DESC
 SQL
     );
     $data = $stmt->fetchAll();
@@ -89,28 +95,41 @@ SQL
 
 
 $app->get('/report/malfunctions', function (Request $request, Response $response) {
+    $interval = 1;
+    /** @var PDO $db */
     $db = $this->get('db');
     $stmt = $db->query(<<<SQL
-WITH FaceAvg AS (
-    SELECT s.face, 
-           AVG(t.temperature) AS avg_temp
-    FROM temperatures t
-    JOIN sensors s ON t.sensor_id = s.sensor_id
-    WHERE t.timestamp >= NOW() - INTERVAL 1 HOUR
+WITH
+FaceAvg AS (
+    SELECT s.face, AVG(t.temperature) AS avg_temp
+    FROM temperatures AS t
+    JOIN sensors AS s
+        USING(sensor_id)
+    WHERE t.timestamp >= NOW() - INTERVAL {$interval} HOUR
     GROUP BY s.face
- )
- SELECT t.sensor_id, s.face, 
-        AVG(t.temperature) AS sensor_avg, 
-        fa.avg_temp, 
-        (ABS(AVG(t.temperature) - fa.avg_temp) / fa.avg_temp) * 100 AS deviation
- FROM temperatures t
- JOIN sensors s ON t.sensor_id = s.sensor_id
- JOIN FaceAvg fa ON s.face = fa.face
- WHERE t.timestamp >= NOW() - INTERVAL 1 HOUR
- GROUP BY t.sensor_id, s.face, fa.avg_temp
- HAVING deviation > 20
+),
+SensorAvg AS (
+    SELECT t.sensor_id, AVG(t.temperature) AS sensor_avg
+    FROM temperatures AS t
+    WHERE t.timestamp >= NOW() - INTERVAL {$interval} HOUR
+    GROUP BY t.sensor_id
+)
+SELECT s.sensor_id, s.face, 
+       sa.sensor_avg AS sensor_avg, 
+       fa.avg_temp AS avg_temp
+FROM sensors AS s
+LEFT JOIN SensorAvg AS sa
+USING(sensor_id)
+
+JOIN FaceAvg AS fa
+USING(face)
+
+WHERE
+    sa.sensor_id IS NULL OR
+    (ABS(sa.sensor_avg - fa.avg_temp) / fa.avg_temp) * 100 > 20
 SQL
     );
+
     $data = $stmt->fetchAll();
 
     $response->getBody()->write(json_encode($data));

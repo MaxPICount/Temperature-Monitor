@@ -12,7 +12,7 @@ services:
     command: [ "sh", "-c", "composer install --no-dev --optimize-autoloader && php-fpm" ]
     environment:
       XDEBUG_MODE: debug
-      XDEBUG_CONFIG: "client_host=172.24.0.1 client_port=9003"
+      XDEBUG_CONFIG: "client_host=172.19.0.1 client_port=9003"
       XDEBUG_SESSION_START: ''
       PHP_IDE_CONFIG: "serverName=OMCGroup"
     volumes:
